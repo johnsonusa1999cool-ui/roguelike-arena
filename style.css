@@ -1,0 +1,55 @@
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #0e0f14;
+  color: #f4f5f9;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+}
+
+.ui {
+  width: min(900px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 0.95rem;
+  color: #c9ccdb;
+}
+
+.hint {
+  opacity: 0.8;
+}
+
+#game {
+  border: 1px solid #2d3142;
+  background: radial-gradient(circle at top, #1b1d2a, #101219 70%);
+  border-radius: 12px;
+  width: min(900px, 100%);
+  height: auto;
+  aspect-ratio: 3 / 2;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
