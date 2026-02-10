@@ -59,6 +59,8 @@ const player = {
     damage: 0,
     shield: 0,
   },
+  angle: -Math.PI / 2,
+  animTime: 0,
 };
 
 const uiState = {
@@ -429,6 +431,14 @@ function updatePlayer(delta) {
   player.y = clamp(player.y, player.radius, world.height - player.radius);
 
   player.shootPulse = Math.max(0, player.shootPulse - delta);
+
+  const moveMag = Math.hypot(player.vx, player.vy);
+  if (moveMag > 5) {
+    const targetAngle = Math.atan2(player.vy, player.vx);
+    const angleDelta = Math.atan2(Math.sin(targetAngle - player.angle), Math.cos(targetAngle - player.angle));
+    player.angle += angleDelta * clamp(delta * 12, 0, 1);
+    player.animTime += delta * (4 + moveMag / 60);
+  }
 }
 
 function updateEnemies(delta) {
@@ -684,6 +694,52 @@ function drawCircle(x, y, radius, color) {
 }
 
 function drawPlayer() {
+  const moveMag = Math.hypot(player.vx, player.vy);
+  const bob = moveMag > 5 ? Math.sin(player.animTime * 6) * 1.4 : 0;
+  const legSwing = moveMag > 5 ? Math.sin(player.animTime * 8) * 1.4 : 0;
+
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.rotate(player.angle + Math.PI / 2);
+
+  ctx.shadowColor = "rgba(45, 212, 191, 0.45)";
+  ctx.shadowBlur = 10;
+
+  // body
+  ctx.fillStyle = "#14b8a6";
+  ctx.fillRect(-7, -6 + bob, 14, 14);
+
+  // shoulders / armor accents
+  ctx.fillStyle = "#22d3ee";
+  ctx.fillRect(-9, -6 + bob, 3, 8);
+  ctx.fillRect(6, -6 + bob, 3, 8);
+
+  // visor
+  ctx.fillStyle = "#67e8f9";
+  ctx.fillRect(-4, -11 + bob, 8, 5);
+
+  // head plate
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(-5, -14 + bob, 10, 4);
+
+  // legs
+  ctx.fillStyle = "#334155";
+  ctx.fillRect(-6, 8 + bob + legSwing * 0.3, 5, 7);
+  ctx.fillRect(1, 8 + bob - legSwing * 0.3, 5, 7);
+
+  // thruster / direction marker
+  ctx.fillStyle = "#fbbf24";
+  ctx.beginPath();
+  ctx.moveTo(0, -18 + bob);
+  ctx.lineTo(-3, -13 + bob);
+  ctx.lineTo(3, -13 + bob);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+
   const gradient = ctx.createRadialGradient(
     player.x - player.radius * 0.3,
     player.y - player.radius * 0.3,
