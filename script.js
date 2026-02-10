@@ -20,6 +20,7 @@ const world = {
 const keys = new Set();
 const enemies = [];
 const bullets = [];
+const enemyBullets = [];
 const particles = [];
 const xpOrbs = [];
 
@@ -39,6 +40,7 @@ const player = {
   xpToLevel: 100,
   damage: 34,
   fireRate: 0.35,
+  defense: 0,
 };
 
 const gameState = {
@@ -57,6 +59,8 @@ const settings = {
   enemyRadius: 12,
   bulletSpeed: 440,
   bulletRadius: 4,
+  enemyBulletSpeed: 220,
+  enemyBulletRadius: 4,
   playerAccel: 12,
   playerFriction: 10,
   difficultyInterval: 20,
@@ -82,6 +86,23 @@ const upgrades = [
     },
   },
   {
+    id: "health",
+    label: "Increase max health",
+    description: "Boost survivability.",
+    apply: () => {
+      player.maxHealth += 20;
+      player.health = Math.min(player.maxHealth, player.health + 20);
+    },
+  },
+  {
+    id: "defense",
+    label: "Increase defense",
+    description: "Reduce incoming damage.",
+    apply: () => {
+      player.defense = Math.min(0.6, player.defense + 0.08);
+    },
+  },
+  {
     id: "damage",
     label: "Increase damage",
     description: "Shots hit harder.",
@@ -97,6 +118,64 @@ function clamp(value, min, max) {
 
 function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function applyDamage(amount) {
+  const mitigated = amount * (1 - player.defense);
+  player.health -= mitigated;
+}
+
+function createEnemy(type, x, y) {
+  const baseSpeed =
+    settings.enemySpeed +
+    gameState.difficultyLevel * settings.enemySpeedScale +
+    Math.random() * 40;
+  const types = {
+    grunt: {
+      radius: settings.enemyRadius,
+      speed: baseSpeed,
+      health: 60,
+    },
+    sprinter: {
+      radius: settings.enemyRadius - 2,
+      speed: baseSpeed + 40,
+      health: 40,
+      zigzagPhase: Math.random() * Math.PI * 2,
+    },
+    tank: {
+      radius: settings.enemyRadius + 4,
+      speed: baseSpeed - 20,
+      health: 120,
+    },
+    shooter: {
+      radius: settings.enemyRadius,
+      speed: baseSpeed - 10,
+      health: 70,
+      shootCooldown: 1.2,
+    },
+    charger: {
+      radius: settings.enemyRadius + 2,
+      speed: baseSpeed,
+      health: 80,
+      dashTimer: 2,
+      dashSpeed: 240,
+    },
+  };
+
+  const data = types[type] || types.grunt;
+  return {
+    x,
+    y,
+    radius: data.radius,
+    speed: data.speed,
+    health: data.health,
+    type,
+    hitTimer: 0,
+    zigzagPhase: data.zigzagPhase ?? 0,
+    shootCooldown: data.shootCooldown ?? 0,
+    dashTimer: data.dashTimer ?? 0,
+    dashSpeed: data.dashSpeed ?? 0,
+  };
 }
 
 function spawnEnemy() {
@@ -118,17 +197,19 @@ function spawnEnemy() {
     y = Math.random() * world.height;
   }
 
-  enemies.push({
-    x,
-    y,
-    radius: settings.enemyRadius,
-    speed:
-      settings.enemySpeed +
-      gameState.difficultyLevel * settings.enemySpeedScale +
-      Math.random() * 40,
-    health: 60,
-    hitTimer: 0,
-  });
+  const roll = Math.random();
+  let type = "grunt";
+  if (gameState.difficultyLevel >= 1 && roll > 0.8) {
+    type = "sprinter";
+  } else if (gameState.difficultyLevel >= 2 && roll > 0.6) {
+    type = "tank";
+  } else if (gameState.difficultyLevel >= 3 && roll > 0.45) {
+    type = "shooter";
+  } else if (gameState.difficultyLevel >= 4 && roll > 0.3) {
+    type = "charger";
+  }
+
+  enemies.push(createEnemy(type, x, y));
 }
 
 function spawnParticles(x, y, color, count) {
@@ -203,12 +284,40 @@ function updatePlayer(delta) {
 function updateEnemies(delta) {
   enemies.forEach((enemy) => {
     const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
-    enemy.x += Math.cos(angle) * enemy.speed * delta;
-    enemy.y += Math.sin(angle) * enemy.speed * delta;
+    let speed = enemy.speed;
+    if (enemy.type === "sprinter") {
+      enemy.zigzagPhase += delta * 6;
+      speed += Math.sin(enemy.zigzagPhase) * 20;
+    }
+    if (enemy.type === "charger") {
+      enemy.dashTimer -= delta;
+      if (enemy.dashTimer <= 0) {
+        enemy.dashTimer = 2.2;
+        speed = enemy.dashSpeed;
+      }
+    }
+
+    enemy.x += Math.cos(angle) * speed * delta;
+    enemy.y += Math.sin(angle) * speed * delta;
     enemy.hitTimer = Math.max(0, enemy.hitTimer - delta);
 
     if (distance(enemy, player) < enemy.radius + player.radius) {
-      player.health -= 18 * delta;
+      applyDamage(18 * delta);
+    }
+
+    if (enemy.type === "shooter") {
+      enemy.shootCooldown -= delta;
+      if (enemy.shootCooldown <= 0) {
+        enemy.shootCooldown = 1.6;
+        enemyBullets.push({
+          x: enemy.x,
+          y: enemy.y,
+          vx: Math.cos(angle) * settings.enemyBulletSpeed,
+          vy: Math.sin(angle) * settings.enemyBulletSpeed,
+          radius: settings.enemyBulletRadius,
+          damage: 12,
+        });
+      }
     }
   });
 }
@@ -229,6 +338,33 @@ function updateBullets(delta) {
 
     if (outOfBounds) {
       bullets.splice(i, 1);
+    }
+  }
+}
+
+function updateEnemyBullets(delta) {
+  enemyBullets.forEach((bullet) => {
+    bullet.x += bullet.vx * delta;
+    bullet.y += bullet.vy * delta;
+  });
+
+  for (let i = enemyBullets.length - 1; i >= 0; i -= 1) {
+    const bullet = enemyBullets[i];
+    const outOfBounds =
+      bullet.x < -bullet.radius ||
+      bullet.x > world.width + bullet.radius ||
+      bullet.y < -bullet.radius ||
+      bullet.y > world.height + bullet.radius;
+
+    if (outOfBounds) {
+      enemyBullets.splice(i, 1);
+      continue;
+    }
+
+    if (distance(player, bullet) < player.radius + bullet.radius) {
+      applyDamage(bullet.damage);
+      spawnParticles(bullet.x, bullet.y, { r: 147, g: 197, b: 253 }, 6);
+      enemyBullets.splice(i, 1);
     }
   }
 }
@@ -407,6 +543,15 @@ function drawBullet(bullet) {
   ctx.restore();
 }
 
+function drawEnemyBullet(bullet) {
+  ctx.save();
+  ctx.shadowColor = "rgba(129, 140, 248, 0.8)";
+  ctx.shadowBlur = 8;
+  drawCircle(bullet.x, bullet.y, bullet.radius + 1, "rgba(129, 140, 248, 0.4)");
+  drawCircle(bullet.x, bullet.y, bullet.radius, "#818cf8");
+  ctx.restore();
+}
+
 function render() {
   ctx.clearRect(0, 0, world.width, world.height);
 
@@ -423,6 +568,10 @@ function render() {
 
   bullets.forEach((bullet) => {
     drawBullet(bullet);
+  });
+
+  enemyBullets.forEach((bullet) => {
+    drawEnemyBullet(bullet);
   });
 
   enemies.forEach((enemy) => {
@@ -506,6 +655,7 @@ function update(delta) {
   updatePlayer(delta);
   updateEnemies(delta);
   updateBullets(delta);
+  updateEnemyBullets(delta);
   updateParticles(delta);
   updateXpOrbs(delta);
   handleCombat();
