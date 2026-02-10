@@ -101,6 +101,7 @@ const upgrades = [
     description: "Shoot faster.",
     apply: () => {
       player.fireRate = Math.max(0.16, player.fireRate * 0.85);
+      player.fireRate = Math.max(0.18, player.fireRate * 0.85);
     },
   },
   {
@@ -109,6 +110,7 @@ const upgrades = [
     description: "Move faster.",
     apply: () => {
       player.speed += 24;
+      player.speed += 25;
     },
   },
   {
@@ -240,6 +242,8 @@ function updateMusic(delta) {
 
 function applyDamage(amount) {
   const mitigated = amount * (1 - getDefense());
+function applyDamage(amount) {
+  const mitigated = amount * (1 - player.defense);
   player.health -= mitigated;
 }
 
@@ -248,6 +252,15 @@ function createEnemy(type, x, y) {
     settings.enemySpeed + gameState.difficultyLevel * settings.enemySpeedScale + Math.random() * 40;
   const types = {
     grunt: { radius: settings.enemyRadius, speed: baseSpeed, health: 60 },
+    settings.enemySpeed +
+    gameState.difficultyLevel * settings.enemySpeedScale +
+    Math.random() * 40;
+  const types = {
+    grunt: {
+      radius: settings.enemyRadius,
+      speed: baseSpeed,
+      health: 60,
+    },
     sprinter: {
       radius: settings.enemyRadius - 2,
       speed: baseSpeed + 40,
@@ -255,6 +268,11 @@ function createEnemy(type, x, y) {
       zigzagPhase: Math.random() * Math.PI * 2,
     },
     tank: { radius: settings.enemyRadius + 4, speed: baseSpeed - 20, health: 120 },
+    tank: {
+      radius: settings.enemyRadius + 4,
+      speed: baseSpeed - 20,
+      health: 120,
+    },
     shooter: {
       radius: settings.enemyRadius,
       speed: baseSpeed - 10,
@@ -311,6 +329,15 @@ function spawnEnemy() {
   else if (gameState.difficultyLevel >= 3 && roll > 0.62) type = "shooter";
   else if (gameState.difficultyLevel >= 2 && roll > 0.48) type = "tank";
   else if (gameState.difficultyLevel >= 1 && roll > 0.32) type = "sprinter";
+  if (gameState.difficultyLevel >= 1 && roll > 0.8) {
+    type = "sprinter";
+  } else if (gameState.difficultyLevel >= 2 && roll > 0.6) {
+    type = "tank";
+  } else if (gameState.difficultyLevel >= 3 && roll > 0.45) {
+    type = "shooter";
+  } else if (gameState.difficultyLevel >= 4 && roll > 0.3) {
+    type = "charger";
+  }
 
   enemies.push(createEnemy(type, x, y));
 }
@@ -345,6 +372,11 @@ function spawnBoost() {
     radius: 10,
     type,
     spin: Math.random() * Math.PI * 2,
+  xpOrbs.push({
+    x,
+    y,
+    radius: 6,
+    amount,
   });
 }
 
@@ -364,6 +396,9 @@ function shootAt(target) {
   });
   player.shootPulse = 0.15;
   playSfx("shoot");
+    damage: player.damage,
+  });
+  player.shootPulse = 0.15;
 }
 
 function updatePlayer(delta) {
@@ -379,6 +414,9 @@ function updatePlayer(delta) {
   const length = Math.hypot(dx, dy);
   const targetVx = length ? (dx / length) * speed : 0;
   const targetVy = length ? (dy / length) * speed : 0;
+  const length = Math.hypot(dx, dy);
+  const targetVx = length ? (dx / length) * player.speed : 0;
+  const targetVy = length ? (dy / length) * player.speed : 0;
   const accel = length ? settings.playerAccel : settings.playerFriction;
 
   player.vx += (targetVx - player.vx) * accel * delta;
@@ -451,6 +489,9 @@ function updateBullets(delta) {
       bullet.y > world.height + bullet.radius;
 
     if (outOfBounds) bullets.splice(i, 1);
+    if (outOfBounds) {
+      bullets.splice(i, 1);
+    }
   }
 }
 
@@ -491,6 +532,9 @@ function updateParticles(delta) {
     particle.vy *= 0.96;
 
     if (particle.life <= 0) particles.splice(i, 1);
+    if (particle.life <= 0) {
+      particles.splice(i, 1);
+    }
   }
 }
 
@@ -498,6 +542,7 @@ function updateXpOrbs(delta) {
   xpOrbs.forEach((orb) => {
     const angle = Math.atan2(player.y - orb.y, player.x - orb.x);
     const pull = distance(player, orb) < 130 ? 140 : 0;
+    const pull = distance(player, orb) < 120 ? 140 : 0;
     orb.x += Math.cos(angle) * pull * delta;
     orb.y += Math.sin(angle) * pull * delta;
   });
@@ -553,6 +598,12 @@ function handleCombat() {
           gameState.score += enemy.type === "tank" ? 3 : 1;
           spawnParticles(enemy.x, enemy.y, { r: 251, g: 146, b: 60 }, 10);
           spawnXpOrb(enemy.x, enemy.y, enemy.type === "tank" ? 35 : 20);
+        bullets.splice(j, 1);
+        if (enemy.health <= 0) {
+          enemies.splice(i, 1);
+          gameState.score += 1;
+          spawnParticles(enemy.x, enemy.y, { r: 251, g: 146, b: 60 }, 10);
+          spawnXpOrb(enemy.x, enemy.y, 20);
         }
         break;
       }
@@ -562,6 +613,9 @@ function handleCombat() {
 
 function autoShoot(delta) {
   if (player.fireCooldown > 0) player.fireCooldown -= delta;
+  if (player.fireCooldown > 0) {
+    player.fireCooldown -= delta;
+  }
 
   if (player.fireCooldown <= 0 && enemies.length > 0) {
     const target = enemies.reduce((closest, enemy) => {
@@ -580,6 +634,9 @@ function updateDifficulty(delta) {
   gameState.elapsed += delta;
   const level = Math.floor(gameState.elapsed / settings.difficultyInterval);
   if (level > gameState.difficultyLevel) gameState.difficultyLevel = level;
+  if (level > gameState.difficultyLevel) {
+    gameState.difficultyLevel = level;
+  }
 
   const spawnScale = 1 + gameState.difficultyLevel * settings.spawnRateScale;
   gameState.spawnInterval = 1.2 / spawnScale;
@@ -643,6 +700,32 @@ function drawPlayer() {
   ctx.shadowBlur = 12;
   drawCircle(player.x, player.y, player.radius, gradient);
   ctx.restore();
+
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.radius - 1, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const angle = Math.atan2(player.vy, player.vx);
+  if (Math.hypot(player.vx, player.vy) > 5) {
+    ctx.beginPath();
+    ctx.moveTo(
+      player.x + Math.cos(angle) * player.radius,
+      player.y + Math.sin(angle) * player.radius
+    );
+    ctx.lineTo(
+      player.x + Math.cos(angle + 0.5) * player.radius * 0.6,
+      player.y + Math.sin(angle + 0.5) * player.radius * 0.6
+    );
+    ctx.lineTo(
+      player.x + Math.cos(angle - 0.5) * player.radius * 0.6,
+      player.y + Math.sin(angle - 0.5) * player.radius * 0.6
+    );
+    ctx.closePath();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    ctx.fill();
+  }
 }
 
 function drawEnemy(enemy) {
@@ -664,6 +747,9 @@ function drawEnemy(enemy) {
   } else if (enemy.type === "shooter") {
     gradient.addColorStop(0, "#c4b5fd");
     gradient.addColorStop(1, "#7c3aed");
+  if (enemy.hitTimer > 0) {
+    gradient.addColorStop(0, "#fde68a");
+    gradient.addColorStop(1, "#f59e0b");
   } else {
     gradient.addColorStop(0, "#fb7185");
     gradient.addColorStop(1, "#f97316");
@@ -702,12 +788,46 @@ function render(delta) {
   ctx.save();
   ctx.translate(world.offsetX, world.offsetY);
   ctx.scale(world.scale, world.scale);
+  ctx.save();
+  ctx.shadowColor = "rgba(249, 115, 22, 0.5)";
+  ctx.shadowBlur = 10;
+  drawCircle(enemy.x, enemy.y, enemy.radius, gradient);
+  ctx.restore();
+
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(enemy.x, enemy.y, enemy.radius - 1, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawBullet(bullet) {
+  ctx.save();
+  ctx.shadowColor = "rgba(250, 204, 21, 0.8)";
+  ctx.shadowBlur = 8;
+  drawCircle(bullet.x, bullet.y, bullet.radius + 1, "rgba(250, 204, 21, 0.4)");
+  drawCircle(bullet.x, bullet.y, bullet.radius, "#facc15");
+  ctx.restore();
+}
+
+function drawEnemyBullet(bullet) {
+  ctx.save();
+  ctx.shadowColor = "rgba(129, 140, 248, 0.8)";
+  ctx.shadowBlur = 8;
+  drawCircle(bullet.x, bullet.y, bullet.radius + 1, "rgba(129, 140, 248, 0.4)");
+  drawCircle(bullet.x, bullet.y, bullet.radius, "#818cf8");
+  ctx.restore();
+}
+
+function render() {
+  ctx.clearRect(0, 0, world.width, world.height);
 
   if (player.shootPulse > 0) {
     const pulseSize = player.radius + player.shootPulse * 40;
     ctx.beginPath();
     ctx.arc(player.x, player.y, pulseSize, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(250, 204, 21, ${player.shootPulse * 3})`;
+    ctx.strokeStyle = `rgba(250, 204, 21, ${player.shootPulse * 4})`;
     ctx.lineWidth = 2;
     ctx.stroke();
   }
@@ -723,6 +843,42 @@ function render(delta) {
     const alpha = clamp(particle.life / particle.ttl, 0, 1);
     drawCircle(particle.x, particle.y, particle.radius, rgba(particle.color, alpha));
   });
+
+  drawPlayer();
+
+  bullets.forEach((bullet) => {
+    drawBullet(bullet);
+  });
+
+  enemyBullets.forEach((bullet) => {
+    drawEnemyBullet(bullet);
+  });
+
+  enemies.forEach((enemy) => {
+    drawEnemy(enemy);
+  });
+
+  xpOrbs.forEach((orb) => {
+    drawCircle(orb.x, orb.y, orb.radius, "#38bdf8");
+  });
+
+  particles.forEach((particle) => {
+    const alpha = clamp(particle.life / particle.ttl, 0, 1);
+    ctx.beginPath();
+    ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(particle.color, alpha);
+    ctx.fill();
+  });
+
+  const healthBarWidth = 160;
+  const healthBarHeight = 10;
+  const healthRatio = clamp(player.health / player.maxHealth, 0, 1);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.fillRect(20, 20, healthBarWidth, healthBarHeight);
+  ctx.fillStyle = "#22c55e";
+  ctx.fillRect(20, 20, healthBarWidth * healthRatio, healthBarHeight);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+  ctx.strokeRect(20, 20, healthBarWidth, healthBarHeight);
 
   if (gameState.gameOver) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
@@ -806,6 +962,9 @@ function update(delta) {
   autoShoot(delta);
   updateDifficulty(delta);
   updateMusic(delta);
+  handleCombat();
+  autoShoot(delta);
+  updateDifficulty(delta);
 
   gameState.spawnTimer += delta;
   if (gameState.spawnTimer >= gameState.spawnInterval) {
@@ -819,6 +978,18 @@ function update(delta) {
   }
 
   updateHud(delta);
+  const healthPercent = clamp(player.health / player.maxHealth, 0, 1);
+  const xpPercent = clamp(player.xp / player.xpToLevel, 0, 1);
+  ui.health.textContent = `Health: ${Math.ceil(player.health)}`;
+  ui.healthFill.style.width = `${healthPercent * 100}%`;
+  ui.healthFill.style.background =
+    healthPercent < 0.3
+      ? "linear-gradient(90deg, #f97316, #ef4444)"
+      : "linear-gradient(90deg, #22c55e, #4ade80)";
+  ui.level.textContent = `Level: ${player.level}`;
+  ui.xpFill.style.width = `${xpPercent * 100}%`;
+  ui.timer.textContent = `Time: ${Math.floor(gameState.elapsed)}s`;
+  ui.score.textContent = `Score: ${gameState.score}`;
 }
 
 function gameLoop(timestamp) {
@@ -827,6 +998,7 @@ function gameLoop(timestamp) {
 
   update(delta);
   render(delta);
+  render();
   requestAnimationFrame(gameLoop);
 }
 
@@ -836,6 +1008,9 @@ window.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("pointerdown", ensureAudio);
+
+  keys.add(event.code);
+});
 
 window.addEventListener("keyup", (event) => {
   keys.delete(event.code);
