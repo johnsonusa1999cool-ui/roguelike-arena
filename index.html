@@ -10,12 +10,6 @@
     <div class="ui">
       <div class="title">Roguelike Arena</div>
       <div class="stats">
-        <div class="health" aria-label="Player health">
-          <span class="label" id="health">Health: 100</span>
-          <div class="health-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-            <div class="health-bar__fill" id="health-fill"></div>
-          </div>
-        </div>
         <div class="xp" aria-label="Player experience">
           <span class="label" id="level">Level: 1</span>
           <div class="xp-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
@@ -23,10 +17,10 @@
           </div>
         </div>
         <span id="timer">Time: 0s</span>
-        <span id="score">Score: 0</span>
         <span class="hint">Move: WASD/Arrows • Auto-shoot on</span>
       </div>
     </div>
+
     <div class="overlay hidden" id="upgrade-overlay" role="dialog" aria-modal="true">
       <div class="card">
         <h2>Level Up!</h2>
@@ -34,7 +28,18 @@
         <div class="upgrade-list" id="upgrade-list"></div>
       </div>
     </div>
-    <canvas id="game" width="900" height="600"></canvas>
+
+    <div class="game-shell">
+      <canvas id="game" width="900" height="600"></canvas>
+      <div class="hud health-corner">
+        <span id="health">Health: 100</span>
+        <div class="health-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+          <div class="health-bar__fill" id="health-fill"></div>
+        </div>
+      </div>
+      <div class="hud score-corner" id="score">Score: 0</div>
+    </div>
+
     <script src="script.js"></script>
   </body>
 </html>
