@@ -303,6 +303,8 @@ function createEnemy(type, x, y) {
     shootCooldown: data.shootCooldown ?? 0,
     dashTimer: data.dashTimer ?? 0,
     dashSpeed: data.dashSpeed ?? 0,
+    angle: -Math.PI / 2,
+    animTime: Math.random() * Math.PI * 2,
   };
 }
 
@@ -462,6 +464,10 @@ function updateEnemies(delta) {
     enemy.x += Math.cos(angle) * speed * delta;
     enemy.y += Math.sin(angle) * speed * delta;
     enemy.hitTimer = Math.max(0, enemy.hitTimer - delta);
+
+    const angleDelta = Math.atan2(Math.sin(angle - enemy.angle), Math.cos(angle - enemy.angle));
+    enemy.angle += angleDelta * clamp(delta * 10, 0, 1);
+    enemy.animTime += delta * (3 + speed / 90);
 
     if (distance(enemy, player) < enemy.radius + player.radius) {
       applyDamage(18 * delta);
@@ -740,6 +746,49 @@ function drawPlayer() {
 }
 
 
+function drawEnemy(enemy) {
+  const bob = Math.sin(enemy.animTime * 6) * 1.0;
+  const armSwing = Math.sin(enemy.animTime * 5) * 0.6;
+
+  ctx.save();
+  ctx.translate(enemy.x, enemy.y);
+  ctx.rotate(enemy.angle + Math.PI / 2);
+
+  const suitColor =
+    enemy.type === "tank" ? "#1f7a2e" : enemy.type === "shooter" ? "#2e7d32" : "#22c55e";
+  const armorColor = enemy.hitTimer > 0 ? "#facc15" : "#14532d";
+
+  // body
+  ctx.fillStyle = suitColor;
+  ctx.fillRect(-7, -5 + bob, 14, 16);
+
+  // chest armor
+  ctx.fillStyle = armorColor;
+  ctx.fillRect(-5, -4 + bob, 10, 8);
+
+  // arms
+  ctx.fillStyle = "#c08457";
+  ctx.fillRect(-10, -3 + bob + armSwing, 3, 9);
+  ctx.fillRect(7, -3 + bob - armSwing, 3, 9);
+
+  // helmet
+  ctx.fillStyle = "#8b5e3c";
+  ctx.fillRect(-6, -12 + bob, 12, 6);
+
+  // visor
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(-4, -10 + bob, 8, 3);
+
+  // boots
+  ctx.fillStyle = "#3f3f46";
+  ctx.fillRect(-6, 11 + bob, 5, 5);
+  ctx.fillRect(1, 11 + bob, 5, 5);
+
+  // weapon
+  ctx.fillStyle = "#1f2937";
+  ctx.fillRect(-2, -16 + bob, 4, 7);
+
+  ctx.restore();
   const gradient = ctx.createRadialGradient(
     player.x - player.radius * 0.3,
     player.y - player.radius * 0.3,
