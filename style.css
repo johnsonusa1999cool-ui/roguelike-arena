@@ -41,6 +41,7 @@ body {
   color: #c9ccdb;
 }
 
+.health,
 .xp {
   display: flex;
   align-items: center;
@@ -51,6 +52,10 @@ body {
 .health-bar {
   width: 140px;
   height: 12px;
+.health-bar,
+.xp-bar {
+  width: 120px;
+  height: 10px;
   border-radius: 999px;
   background: #1f2433;
   border: 1px solid #343a4f;
@@ -70,6 +75,19 @@ body {
 
 .health-bar__fill {
   background: linear-gradient(90deg, #ef4444, #f87171);
+.health-bar__fill,
+.xp-bar__fill {
+  height: 100%;
+  width: 100%;
+  transition: width 0.2s ease;
+}
+
+.health-bar__fill {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.xp-bar__fill {
+  background: linear-gradient(90deg, #38bdf8, #60a5fa);
 }
 
 .hint {
@@ -112,6 +130,14 @@ body {
   min-width: 110px;
   text-align: left;
   z-index: 6;
+#game {
+  border: 1px solid #2d3142;
+  background: radial-gradient(circle at top, #1b1d2a, #101219 70%);
+  border-radius: 12px;
+  width: min(900px, 100%);
+  height: auto;
+  aspect-ratio: 3 / 2;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 
 .overlay {
